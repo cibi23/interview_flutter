@@ -1,33 +1,22 @@
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:interview_flutter/common/bottom_navigation.dart';
+import 'package:interview_flutter/services/product_service.dart';
 
 import '../models/product.dart';
+import '../services/network.dart';
 
-class ProductDetailsPage extends StatefulWidget {
-  const ProductDetailsPage({super.key, required this.productId});
+class ProductDetailsPage extends StatelessWidget {
+  ProductDetailsPage({super.key, required this.productId});
   final int productId;
-
-  @override
-  State<StatefulWidget> createState() => _ProductDetailsPageState();
-}
-
-class _ProductDetailsPageState extends State<ProductDetailsPage> {
-  final baseUrl = "https://productdetails-dno6nb6hsa-uc.a.run.app";
-
-  @override
-  initState() {
-    super.initState();
-  }
+  final ProductService service = getIt.get<ProductService>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: Colors.white,
         body: FutureBuilder<Product>(
-          future: getProduct(),
+          future: service.getProduct(productId),
           builder:
               (BuildContext context, AsyncSnapshot<Product> productResult) {
             if (productResult.hasError) {
@@ -38,25 +27,8 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
               return const Center(child: CircularProgressIndicator());
             } else {
               final prod = productResult.data!;
-              var hasImage =
-                  prod.imageUrls != null && prod.imageUrls?.first != null;
-              var firstUrl = prod.imageUrls?.first;
               return ListView(children: [
-                AspectRatio(
-                  aspectRatio: MediaQuery.of(context).size.height /
-                      MediaQuery.of(context).size.width,
-                  child: Container(
-                      decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: hasImage
-                          ? NetworkImage(firstUrl!)
-                          : const AssetImage('assets/iphone.png')
-                              as ImageProvider,
-                      fit: BoxFit.fitHeight,
-                      alignment: FractionalOffset.bottomRight,
-                    ),
-                  )),
-                ),
+                _startImage(prod, context),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                   child: Text(
@@ -79,55 +51,7 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: SizedBox(
-                    height: 200,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        if (hasImage)
-                          for (var url in prod.imageUrls!)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 20),
-                              child: AspectRatio(
-                                aspectRatio: 1,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Container(
-                                      decoration: BoxDecoration(
-                                    image: DecorationImage(
-                                      image: NetworkImage(url),
-                                      fit: BoxFit.cover,
-                                      alignment: FractionalOffset.center,
-                                    ),
-                                  )),
-                                ),
-                              ),
-                            ),
-                        if (!hasImage)
-                          for (var i = 0; i < 4; i++)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 20),
-                              child: AspectRatio(
-                                aspectRatio: 1,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Container(
-                                      decoration: const BoxDecoration(
-                                    image: DecorationImage(
-                                      image: AssetImage('assets/iphone.png'),
-                                      fit: BoxFit.cover,
-                                      alignment: FractionalOffset.center,
-                                    ),
-                                  )),
-                                ),
-                              ),
-                            ),
-                      ],
-                    ),
-                  ),
-                ),
+                _images(prod)
               ]);
             }
           },
@@ -135,16 +59,79 @@ class _ProductDetailsPageState extends State<ProductDetailsPage> {
         bottomNavigationBar: MyBottomNavigationBar.get());
   }
 
-  Future<Product> getProduct() async {
-    try {
-      var url = Uri.parse('$baseUrl/${widget.productId}');
-      final response = await http.get(url);
-      return Product.fromJson(jsonDecode(response.body));
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Error occurred.$e"),
-      ));
-      rethrow;
-    }
+  Widget _startImage(Product prod, BuildContext context){
+    var hasImage =
+        prod.imageUrls != null && prod.imageUrls?.first != null;
+    var firstUrl = prod.imageUrls?.first;
+    return AspectRatio(
+      aspectRatio: MediaQuery.of(context).size.height /
+          MediaQuery.of(context).size.width,
+      child: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: hasImage
+                  ? NetworkImage(firstUrl!)
+                  : const AssetImage('assets/iphone.png')
+              as ImageProvider,
+              fit: BoxFit.fitHeight,
+              alignment: FractionalOffset.bottomRight,
+            ),
+          )),
+    );
   }
+
+  Widget _images(Product prod){
+    var hasImage =
+        prod.imageUrls != null && prod.imageUrls?.first != null;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: SizedBox(
+        height: 200,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            if (hasImage)
+              for (var url in prod.imageUrls!)
+                Padding(
+                  padding: const EdgeInsets.only(right: 20),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                          decoration: BoxDecoration(
+                            image: DecorationImage(
+                              image: NetworkImage(url),
+                              fit: BoxFit.cover,
+                              alignment: FractionalOffset.center,
+                            ),
+                          )),
+                    ),
+                  ),
+                ),
+            if (!hasImage)
+              for (var i = 0; i < 4; i++)
+                Padding(
+                  padding: const EdgeInsets.only(right: 20),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                          decoration: const BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage('assets/iphone.png'),
+                              fit: BoxFit.cover,
+                              alignment: FractionalOffset.center,
+                            ),
+                          )),
+                    ),
+                  ),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
 }
